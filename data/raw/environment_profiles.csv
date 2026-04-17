@@ -1,0 +1,7 @@
+environment_type,signal_multiplier
+normal,1.0
+rain,0.85
+heavy_rain,0.7
+urban_dense,1.05
+tunnel,0.2
+underpass,0.5

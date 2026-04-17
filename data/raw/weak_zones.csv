@@ -1,0 +1,11 @@
+zone_id,center_lat,center_lon,radius_m,zone_type,severity,attenuation_factor,reason
+Z01,12.9632,77.5712,320,underpass,high,0.35,KR Market underpass cluster
+Z02,12.9904,77.6039,420,urban_canyon,medium,0.68,CBD high-rise interference
+Z03,12.9486,77.5842,520,sparse_area,high,0.42,Patchy southern edge coverage
+Z04,12.9792,77.5481,300,tunnel,high,0.2,Rail underpass signal attenuation
+Z05,12.9549,77.6278,390,high_interference,medium,0.6,Dense office cluster reflections
+Z06,12.9998,77.5675,460,sparse_area,medium,0.72,North-west fringe coverage dip
+Z07,12.9397,77.6101,480,outskirts_weak_patch,high,0.38,South-east fringe handover gap
+Z08,12.987,77.6369,340,underpass,medium,0.55,Flyover shadowing
+Z09,12.9712,77.5944,260,high_interference,low,0.82,Core city interference pocket
+Z10,12.9464,77.5518,440,sparse_area,medium,0.64,Western corridor weak patch
