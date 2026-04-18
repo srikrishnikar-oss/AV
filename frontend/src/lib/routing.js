@@ -1,4 +1,4 @@
-export const API_BASE = 'http://127.0.0.1:8000'
+export const API_BASE = ''
 export const DEFAULT_DATASET = 'mvp'
 export const DEFAULT_SOURCE = 'Cubbon Park, Bengaluru'
 export const DEFAULT_DESTINATION = 'Indiranagar Metro Station, Bengaluru'

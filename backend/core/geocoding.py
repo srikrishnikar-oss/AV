@@ -8,6 +8,181 @@ import requests
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "AVRoutingSuite/0.1 (academic prototype)"
 LOCAL_PLACE_INDEX = {
+    "jayanagar": {
+        "display_name": "Jayanagar, Bengaluru, Karnataka, India",
+        "lat": 12.929273,
+        "lon": 77.582422,
+    },
+    "jayanagar, bengaluru": {
+        "display_name": "Jayanagar, Bengaluru, Karnataka, India",
+        "lat": 12.929273,
+        "lon": 77.582422,
+    },
+    "majestic": {
+        "display_name": "Majestic, Bengaluru, Karnataka, India",
+        "lat": 12.978411,
+        "lon": 77.572339,
+    },
+    "majestic, bengaluru": {
+        "display_name": "Majestic, Bengaluru, Karnataka, India",
+        "lat": 12.978411,
+        "lon": 77.572339,
+    },
+    "kempegowda bus station": {
+        "display_name": "Kempegowda Bus Station, Majestic, Bengaluru, Karnataka, India",
+        "lat": 12.978411,
+        "lon": 77.572339,
+    },
+    "kempegowda bus station, bengaluru": {
+        "display_name": "Kempegowda Bus Station, Majestic, Bengaluru, Karnataka, India",
+        "lat": 12.978411,
+        "lon": 77.572339,
+    },
+    "shivajinagar": {
+        "display_name": "Shivajinagar, Bengaluru, Karnataka, India",
+        "lat": 12.985447,
+        "lon": 77.604652,
+    },
+    "shivajinagar, bengaluru": {
+        "display_name": "Shivajinagar, Bengaluru, Karnataka, India",
+        "lat": 12.985447,
+        "lon": 77.604652,
+    },
+    "malleswaram": {
+        "display_name": "Malleswaram, Bengaluru, Karnataka, India",
+        "lat": 13.003076,
+        "lon": 77.570434,
+    },
+    "malleswaram, bengaluru": {
+        "display_name": "Malleswaram, Bengaluru, Karnataka, India",
+        "lat": 13.003076,
+        "lon": 77.570434,
+    },
+    "rajajinagar": {
+        "display_name": "Rajajinagar, Bengaluru, Karnataka, India",
+        "lat": 12.991409,
+        "lon": 77.554413,
+    },
+    "rajajinagar, bengaluru": {
+        "display_name": "Rajajinagar, Bengaluru, Karnataka, India",
+        "lat": 12.991409,
+        "lon": 77.554413,
+    },
+    "basavanagudi": {
+        "display_name": "Basavanagudi, Bengaluru, Karnataka, India",
+        "lat": 12.941726,
+        "lon": 77.575502,
+    },
+    "basavanagudi, bengaluru": {
+        "display_name": "Basavanagudi, Bengaluru, Karnataka, India",
+        "lat": 12.941726,
+        "lon": 77.575502,
+    },
+    "lalbagh": {
+        "display_name": "Lalbagh, Bengaluru, Karnataka, India",
+        "lat": 12.950743,
+        "lon": 77.584777,
+    },
+    "lalbagh, bengaluru": {
+        "display_name": "Lalbagh, Bengaluru, Karnataka, India",
+        "lat": 12.950743,
+        "lon": 77.584777,
+    },
+    "richmond town": {
+        "display_name": "Richmond Town, Bengaluru, Karnataka, India",
+        "lat": 12.961114,
+        "lon": 77.599364,
+    },
+    "richmond town, bengaluru": {
+        "display_name": "Richmond Town, Bengaluru, Karnataka, India",
+        "lat": 12.961114,
+        "lon": 77.599364,
+    },
+    "church street": {
+        "display_name": "Church Street, Bengaluru, Karnataka, India",
+        "lat": 12.974563,
+        "lon": 77.607674,
+    },
+    "church street, bengaluru": {
+        "display_name": "Church Street, Bengaluru, Karnataka, India",
+        "lat": 12.974563,
+        "lon": 77.607674,
+    },
+    "brigade road": {
+        "display_name": "Brigade Road, Bengaluru, Karnataka, India",
+        "lat": 12.971619,
+        "lon": 77.606814,
+    },
+    "brigade road, bengaluru": {
+        "display_name": "Brigade Road, Bengaluru, Karnataka, India",
+        "lat": 12.971619,
+        "lon": 77.606814,
+    },
+    "ulsoor": {
+        "display_name": "Ulsoor, Bengaluru, Karnataka, India",
+        "lat": 12.982555,
+        "lon": 77.620992,
+    },
+    "ulsoor, bengaluru": {
+        "display_name": "Ulsoor, Bengaluru, Karnataka, India",
+        "lat": 12.982555,
+        "lon": 77.620992,
+    },
+    "domlur": {
+        "display_name": "Domlur, Bengaluru, Karnataka, India",
+        "lat": 12.960992,
+        "lon": 77.638726,
+    },
+    "domlur, bengaluru": {
+        "display_name": "Domlur, Bengaluru, Karnataka, India",
+        "lat": 12.960992,
+        "lon": 77.638726,
+    },
+    "vidhana soudha": {
+        "display_name": "Vidhana Soudha, Bengaluru, Karnataka, India",
+        "lat": 12.979928,
+        "lon": 77.591149,
+    },
+    "vidhana soudha, bengaluru": {
+        "display_name": "Vidhana Soudha, Bengaluru, Karnataka, India",
+        "lat": 12.979928,
+        "lon": 77.591149,
+    },
+    "cunningham road": {
+        "display_name": "Cunningham Road, Bengaluru, Karnataka, India",
+        "lat": 12.990051,
+        "lon": 77.59486,
+    },
+    "cunningham road, bengaluru": {
+        "display_name": "Cunningham Road, Bengaluru, Karnataka, India",
+        "lat": 12.990051,
+        "lon": 77.59486,
+    },
+    "seshadripuram": {
+        "display_name": "Seshadripuram, Bengaluru, Karnataka, India",
+        "lat": 12.993476,
+        "lon": 77.57254,
+    },
+    "seshadripuram, bengaluru": {
+        "display_name": "Seshadripuram, Bengaluru, Karnataka, India",
+        "lat": 12.993476,
+        "lon": 77.57254,
+    },
+    "indra nagar": {
+        "display_name": "Indiranagar, Bengaluru, Karnataka, India",
+        "lat": 12.978369,
+        "lon": 77.640835,
+    },
+    "indiranagar": {
+        "display_name": "Indiranagar, Bengaluru, Karnataka, India",
+        "lat": 12.978369,
+        "lon": 77.640835,
+    },
+    "indiranagar, bengaluru": {
+        "display_name": "Indiranagar, Bengaluru, Karnataka, India",
+        "lat": 12.978369,
+        "lon": 77.640835,
+    },
     "cubbon park": {
         "display_name": "Cubbon Park, Bengaluru, Karnataka, India",
         "lat": 12.976347,
@@ -132,8 +307,9 @@ def geocode_place(query: str) -> dict[str, object]:
         items = response.json()
     except requests.RequestException as error:
         raise ValueError(
-            "Location lookup timed out. For the demo, try Cubbon Park, Indiranagar Metro Station, MG Road, "
-            "Koramangala, Whitefield, Banashankari, Electronic City, or Kempegowda International Airport."
+            "Location lookup timed out. Try a Central Bengaluru place like Jayanagar, Majestic, Shivajinagar, "
+            "Malleswaram, Rajajinagar, Basavanagudi, Lalbagh, Richmond Town, MG Road, Church Street, Ulsoor, "
+            "Domlur, Cubbon Park, or Indiranagar."
         ) from error
 
     if not items:

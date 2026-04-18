@@ -102,6 +102,7 @@ export default function App() {
   const [speed, setSpeed] = useState(35)
   const [simulationPlaying, setSimulationPlaying] = useState(false)
   const [isDemoLocked, setIsDemoLocked] = useState(false)
+  const [activeDataset, setActiveDataset] = useState(DEFAULT_DATASET)
 
   const [summary, setSummary] = useState(null)
   const [overview, setOverview] = useState(null)
@@ -229,7 +230,7 @@ export default function App() {
       const controller = new AbortController()
       predictionAbortRef.current = controller
       const data = await requestJson(
-        `${API_BASE}/planner/predict-risk?dataset=${DEFAULT_DATASET}&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&speed_kmph=${nextSpeed}&progress_ratio=${simulationProgress}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}&route_label=${encodeURIComponent(nextRouteLabel || '')}`,
+        `${API_BASE}/planner/predict-risk?dataset=${activeDataset}&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&speed_kmph=${nextSpeed}&progress_ratio=${simulationProgress}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}&route_label=${encodeURIComponent(nextRouteLabel || '')}`,
         { signal: controller.signal },
       )
       if (requestId !== predictionRequestIdRef.current) return
@@ -283,10 +284,28 @@ export default function App() {
       }
       const controller = new AbortController()
       planAbortRef.current = controller
-      const data = await requestJson(
-        `${API_BASE}/planner/plan?dataset=${DEFAULT_DATASET}&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}`,
-        { signal: controller.signal },
-      )
+      let data = null
+      let resolvedDataset = DEFAULT_DATASET
+      try {
+        data = await requestJson(
+          `${API_BASE}/planner/plan?dataset=${DEFAULT_DATASET}&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}`,
+          { signal: controller.signal },
+        )
+      } catch (loadError) {
+        const shouldFallbackToFull =
+          DEFAULT_DATASET !== 'full' &&
+          loadError instanceof Error &&
+          (loadError.detail === 'No route found between the selected points' || loadError.status === 400)
+        if (!shouldFallbackToFull) {
+          throw loadError
+        }
+
+        data = await requestJson(
+          `${API_BASE}/planner/plan?dataset=full&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}`,
+          { signal: controller.signal },
+        )
+        resolvedDataset = 'full'
+      }
       if (requestId !== planRequestIdRef.current) return
 
       const nextRoutes = data.routes ?? []
@@ -304,6 +323,7 @@ export default function App() {
       setDestinationPoint(data.destination)
       setCommittedSource(nextSource)
       setCommittedDestination(nextDestination)
+      setActiveDataset(resolvedDataset)
       autoPlanReadyRef.current = true
       if (preferredRouteLabel) {
         handleRouteSelection(preferredRouteLabel, { manual: preserveSelection })
@@ -326,10 +346,10 @@ export default function App() {
       setLoading(true)
       try {
         const [summaryRes, overviewRes, towersRes, zonesRes] = await Promise.all([
-          requestJson(`${API_BASE}/datasets/${DEFAULT_DATASET}/summary`),
-          requestJson(`${API_BASE}/planner/overview?dataset=${DEFAULT_DATASET}`),
-          requestJson(`${API_BASE}/datasets/${DEFAULT_DATASET}/towers?limit=60`),
-          requestJson(`${API_BASE}/datasets/${DEFAULT_DATASET}/weak-zones`),
+          requestJson(`${API_BASE}/datasets/${activeDataset}/summary`),
+          requestJson(`${API_BASE}/planner/overview?dataset=${activeDataset}`),
+          requestJson(`${API_BASE}/datasets/${activeDataset}/towers?limit=60`),
+          requestJson(`${API_BASE}/datasets/${activeDataset}/weak-zones`),
         ])
 
         if (!active) return
@@ -348,11 +368,14 @@ export default function App() {
     }
 
     loadDashboard()
-    loadPlan(DEFAULT_SOURCE, DEFAULT_DESTINATION)
 
     return () => {
       active = false
     }
+  }, [activeDataset])
+
+  useEffect(() => {
+    loadPlan(DEFAULT_SOURCE, DEFAULT_DESTINATION)
   }, [])
 
   useEffect(() => {
