@@ -1,0 +1,15 @@
+{
+  "city": "Bengaluru, Karnataka, India",
+  "dataset_type": "central_bangalore_mvp_subset",
+  "bbox": {
+    "lat_min": 12.96,
+    "lat_max": 12.99,
+    "lon_min": 77.58,
+    "lon_max": 77.62
+  },
+  "road_segments": 6209,
+  "towers": 13,
+  "weak_zones": 4,
+  "feedback_entries": 7,
+  "connectivity_rows": 6209
+}

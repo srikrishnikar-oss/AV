@@ -1,0 +1,5 @@
+zone_id,center_lat,center_lon,radius_m,zone_type,severity,attenuation_factor,reason
+Z01,12.9632,77.5712,320,underpass,high,0.35,KR Market underpass cluster
+Z02,12.9904,77.6039,420,urban_canyon,medium,0.68,CBD high-rise interference
+Z05,12.9549,77.6278,390,high_interference,medium,0.6,Dense office cluster reflections
+Z09,12.9712,77.5944,260,high_interference,low,0.82,Core city interference pocket
