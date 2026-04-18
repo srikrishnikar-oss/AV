@@ -1,5 +1,5 @@
 export const API_BASE = ''
-export const DEFAULT_DATASET = 'mvp'
+export const DEFAULT_DATASET = 'full'
 export const DEFAULT_SOURCE = 'Cubbon Park, Bengaluru'
 export const DEFAULT_DESTINATION = 'Indiranagar Metro Station, Bengaluru'
 export const DEFAULT_PROVIDER = 'Jio'
@@ -17,7 +17,6 @@ export const PAGE_DEFS = [
   { id: 'dashboard', label: 'Comparison' },
   { id: 'adaptive-map', label: 'Signal Map' },
   { id: 'simulation', label: 'Simulation' },
-  { id: 'about', label: 'About' },
 ]
 
 export const ABOUT_FORMULA = 'signal_strength = Pt - 10 * n * log10(distance) - X'
@@ -168,6 +167,19 @@ function compareTuple(left, right) {
 
 export function normalizeRouteRoles(routes) {
   if (!routes.length) return []
+
+  const canonicalLabels = ['Fastest', 'Balanced', 'Safe', 'Emergency']
+  const hasCanonicalRoleSet = canonicalLabels.every((label) => routes.some((route) => route.route_label === label))
+  if (hasCanonicalRoleSet) {
+    return canonicalLabels
+      .map((label) => routes.find((route) => route.route_label === label))
+      .filter(Boolean)
+      .map((route) => ({
+        ...route,
+        route_origin_label: route.route_origin_label ?? route.route_label,
+        strict_safe: isStrictSafeRoute(route),
+      }))
+  }
 
   const remaining = routes.map((route) => ({
     ...route,

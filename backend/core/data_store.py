@@ -1049,12 +1049,14 @@ class DatasetStore:
 
         routes = []
         for label, weight_key in planners:
+            weight = self._provider_weight_function(weight_key, provider_baseline)
             path = nx.shortest_path(
                 self._graph,
                 source_node,
                 dest_node,
-                weight=self._provider_weight_function(weight_key, provider_baseline),
+                weight=weight,
             )
+
             metrics = self._route_metrics(path)
             metrics = enrich_route_for_safety(
                 graph=self._graph,
@@ -1069,7 +1071,6 @@ class DatasetStore:
             metrics["weight_key"] = weight_key
             routes.append(metrics)
 
-        routes = self._relabel_routes_by_outcome(routes)
         routes = self._rank_routes_for_context(routes, alpha=alpha, provider_baseline=provider_baseline, application_type=application_type)
         overlaps = self._route_overlap_stats(routes)
         for route in routes:

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import copy
+from functools import lru_cache
+
 import networkx as nx
 from fastapi import APIRouter, HTTPException, Query
 
@@ -32,6 +35,63 @@ def _attach_pnr_node_indices(routes: list[dict[str, object]]) -> list[dict[str, 
         except ValueError:
             route["pnr_node_index"] = None
     return routes
+
+
+@lru_cache(maxsize=128)
+def _cached_plan_payload(
+    dataset: str,
+    source: str,
+    destination: str,
+    alpha: float,
+    provider_baseline: str,
+    application_type: str,
+    environment_type: str,
+    min_signal_threshold_dbm: float,
+) -> dict[str, object]:
+    store = get_store(dataset)
+    source_point = geocode_place(source)
+    destination_point = geocode_place(destination)
+    plan_result = store.plan_routes(
+        source_lat=source_point["lat"],
+        source_lon=source_point["lon"],
+        dest_lat=destination_point["lat"],
+        dest_lon=destination_point["lon"],
+        alpha=alpha,
+        provider_baseline=provider_baseline,
+        application_type=application_type,
+        environment_type=environment_type,
+        min_signal_threshold_dbm=min_signal_threshold_dbm,
+    )
+    plan_result["routes"] = _attach_pnr_node_indices(plan_result["routes"])
+    return {
+        "source": source_point,
+        "destination": destination_point,
+        "plan_result": plan_result,
+    }
+
+
+def _resolve_plan_payload(
+    *,
+    dataset: str,
+    source: str,
+    destination: str,
+    alpha: float,
+    provider_baseline: str,
+    application_type: str,
+    environment_type: str,
+    min_signal_threshold_dbm: float,
+) -> dict[str, object]:
+    payload = _cached_plan_payload(
+        dataset,
+        source.strip(),
+        destination.strip(),
+        round(alpha, 4),
+        provider_baseline.strip(),
+        application_type.strip(),
+        environment_type.strip(),
+        round(min_signal_threshold_dbm, 2),
+    )
+    return copy.deepcopy(payload)
 
 
 def _reroute_candidate_key(prediction: dict[str, object]) -> tuple[float, ...]:
@@ -177,15 +237,11 @@ def plan(
     environment_type: str = Query(default="normal"),
     min_signal_threshold_dbm: float = Query(default=-92.0, ge=-120.0, le=-40.0),
 ) -> dict[str, object]:
-    store = get_store(dataset)
     try:
-        source_point = geocode_place(source)
-        destination_point = geocode_place(destination)
-        plan_result = store.plan_routes(
-            source_lat=source_point["lat"],
-            source_lon=source_point["lon"],
-            dest_lat=destination_point["lat"],
-            dest_lon=destination_point["lon"],
+        payload = _resolve_plan_payload(
+            dataset=dataset,
+            source=source,
+            destination=destination,
             alpha=alpha,
             provider_baseline=provider_baseline,
             application_type=application_type,
@@ -199,7 +255,9 @@ def plan(
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
-    plan_result["routes"] = _attach_pnr_node_indices(plan_result["routes"])
+    source_point = payload["source"]
+    destination_point = payload["destination"]
+    plan_result = payload["plan_result"]
 
     return {
         "dataset": dataset,
@@ -229,13 +287,10 @@ def predict_risk(
 ) -> dict[str, object]:
     store = get_store(dataset)
     try:
-        source_point = geocode_place(source)
-        destination_point = geocode_place(destination)
-        plan_result = store.plan_routes(
-            source_lat=source_point["lat"],
-            source_lon=source_point["lon"],
-            dest_lat=destination_point["lat"],
-            dest_lon=destination_point["lon"],
+        payload = _resolve_plan_payload(
+            dataset=dataset,
+            source=source,
+            destination=destination,
             alpha=alpha,
             provider_baseline=provider_baseline,
             application_type=application_type,
@@ -249,7 +304,9 @@ def predict_risk(
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
-    plan_result["routes"] = _attach_pnr_node_indices(plan_result["routes"])
+    source_point = payload["source"]
+    destination_point = payload["destination"]
+    plan_result = payload["plan_result"]
 
     if not plan_result["routes"]:
         raise HTTPException(status_code=400, detail="No route options available for prediction")

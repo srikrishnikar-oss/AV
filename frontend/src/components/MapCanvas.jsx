@@ -232,6 +232,7 @@ export default function MapCanvas({
   useEffect(() => {
     let cancelled = false
     let overlays = []
+    let authCheckTimeoutId = null
 
     if (!containerRef.current || !mapData || !GOOGLE_MAPS_API_KEY) {
       return undefined
@@ -259,6 +260,14 @@ export default function MapCanvas({
             ],
           })
         }
+
+        authCheckTimeoutId = window.setTimeout(() => {
+          if (cancelled || !containerRef.current) return
+          const renderedText = containerRef.current.textContent || ''
+          if (renderedText.includes("This page didn't load Google Maps correctly")) {
+            setMapError('Google Maps failed to authenticate. Showing fallback map.')
+          }
+        }, 1200)
 
         const map = mapRef.current
         const bounds = new maps.LatLngBounds(
@@ -572,6 +581,9 @@ export default function MapCanvas({
 
     return () => {
       cancelled = true
+      if (authCheckTimeoutId) {
+        window.clearTimeout(authCheckTimeoutId)
+      }
       overlays.forEach((overlay) => overlay.setMap(null))
     }
   }, [mapData, routes, effectiveSelectedRouteLabel, sourcePoint, destinationPoint, providerBaseline, showAllRoutes, showPnr, compact, simulationPoint, fallbackStatus])

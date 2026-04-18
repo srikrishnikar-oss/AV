@@ -98,9 +98,13 @@ select {
 
 .planner-page {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 220px;
+  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-areas:
+    'sidebar map'
+    'sidebar compare';
   gap: 16px;
   margin-top: 16px;
+  align-items: start;
 }
 
 .planner-sidebar,
@@ -118,6 +122,22 @@ select {
   display: grid;
   gap: 12px;
   align-content: start;
+}
+
+.planner-sidebar {
+  grid-area: sidebar;
+  position: sticky;
+  top: 16px;
+}
+
+.planner-map-column {
+  grid-area: map;
+}
+
+.planner-compare-column {
+  grid-area: compare;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .panel {
@@ -333,7 +353,7 @@ select {
 
 .map-canvas {
   width: 100%;
-  height: 720px;
+  height: 640px;
   border-radius: 8px;
   overflow: hidden;
   background: #1c2128;
@@ -445,6 +465,7 @@ select {
 .route-stack {
   display: grid;
   gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .route-card {
@@ -638,6 +659,7 @@ select {
 .fallback-card {
   display: grid;
   gap: 12px;
+  height: 100%;
 }
 
 .fallback-card__grid {
@@ -674,6 +696,7 @@ select {
 .offline-fallback-card {
   display: grid;
   gap: 10px;
+  height: 100%;
 }
 
 .offline-fallback-card__copy,
@@ -945,6 +968,20 @@ th {
   }
 
   .planner-page {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'sidebar'
+      'map'
+      'compare';
+  }
+
+  .planner-sidebar {
+    position: relative;
+    top: auto;
+  }
+
+  .planner-compare-column,
+  .route-stack {
     grid-template-columns: 1fr;
   }
 

@@ -4,7 +4,6 @@ import Planner from './pages/Planner'
 import Dashboard from './pages/Dashboard'
 import AdaptiveMap from './pages/AdaptiveMap'
 import Simulation from './pages/Simulation'
-import About from './pages/About'
 import { requestJson } from './services/api'
 import {
   API_BASE,
@@ -18,6 +17,8 @@ import {
   normalizeRouteRoles,
   scoreRoutesForAlpha,
 } from './lib/routing'
+
+const PLAN_SNAPSHOT_KEY = 'avroute:lastPlanSnapshot'
 
 function AppHeader({ activePage, cityLabel, activeModeLabel, onPageChange }) {
   return (
@@ -76,22 +77,66 @@ function findNearestRouteNodeIndex(route, referencePoint) {
   return bestIndex
 }
 
+function readPlanSnapshot() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(PLAN_SNAPSHOT_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function writePlanSnapshot(snapshot) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(PLAN_SNAPSHOT_KEY, JSON.stringify(snapshot))
+  } catch {
+    // Ignore storage failures and keep runtime state working.
+  }
+}
+
+function buildPlanSignature({
+  dataset,
+  source,
+  destination,
+  alpha,
+  providerBaseline,
+  applicationType,
+  environmentType,
+  numericThreshold,
+}) {
+  return JSON.stringify({
+    dataset,
+    source: String(source ?? '').trim().toLowerCase(),
+    destination: String(destination ?? '').trim().toLowerCase(),
+    alpha: Number(alpha).toFixed(2),
+    providerBaseline,
+    applicationType,
+    environmentType,
+    numericThreshold: Number(numericThreshold).toFixed(1),
+  })
+}
+
 export default function App() {
+  const initialPlanSnapshotRef = useRef(readPlanSnapshot())
   const planRequestIdRef = useRef(0)
   const predictionRequestIdRef = useRef(0)
   const selectionModeRef = useRef('auto')
-  const autoPlanReadyRef = useRef(false)
+  const autoPlanReadyRef = useRef(Boolean(initialPlanSnapshotRef.current?.routes?.length))
   const planAbortRef = useRef(null)
   const predictionAbortRef = useRef(null)
   const appliedRerouteRef = useRef('')
   const pnrTriggeredRef = useRef(false)
   const pnrPauseTimeoutRef = useRef(null)
+  const inflightPlanSignatureRef = useRef('')
+  const lastPlanSignatureRef = useRef(initialPlanSnapshotRef.current?.signature ?? '')
 
   const [activePage, setActivePage] = useState('planner')
   const [source, setSource] = useState(DEFAULT_SOURCE)
   const [destination, setDestination] = useState(DEFAULT_DESTINATION)
-  const [committedSource, setCommittedSource] = useState(DEFAULT_SOURCE)
-  const [committedDestination, setCommittedDestination] = useState(DEFAULT_DESTINATION)
+  const [committedSource, setCommittedSource] = useState(initialPlanSnapshotRef.current?.committedSource ?? DEFAULT_SOURCE)
+  const [committedDestination, setCommittedDestination] = useState(initialPlanSnapshotRef.current?.committedDestination ?? DEFAULT_DESTINATION)
   const [providerBaseline, setProviderBaseline] = useState(DEFAULT_PROVIDER)
   const [environmentType, setEnvironmentType] = useState('normal')
   const [applicationType, setApplicationType] = useState('Navigation')
@@ -102,14 +147,14 @@ export default function App() {
   const [speed, setSpeed] = useState(35)
   const [simulationPlaying, setSimulationPlaying] = useState(false)
   const [isDemoLocked, setIsDemoLocked] = useState(false)
-  const [activeDataset, setActiveDataset] = useState(DEFAULT_DATASET)
+  const activeDataset = DEFAULT_DATASET
 
   const [summary, setSummary] = useState(null)
   const [overview, setOverview] = useState(null)
-  const [mapData, setMapData] = useState(null)
-  const [sourcePoint, setSourcePoint] = useState(null)
-  const [destinationPoint, setDestinationPoint] = useState(null)
-  const [routes, setRoutes] = useState([])
+  const [mapData, setMapData] = useState(initialPlanSnapshotRef.current?.mapData ?? null)
+  const [sourcePoint, setSourcePoint] = useState(initialPlanSnapshotRef.current?.sourcePoint ?? null)
+  const [destinationPoint, setDestinationPoint] = useState(initialPlanSnapshotRef.current?.destinationPoint ?? null)
+  const [routes, setRoutes] = useState(initialPlanSnapshotRef.current?.routes ?? [])
   const [towers, setTowers] = useState([])
   const [zones, setZones] = useState([])
   const [prediction, setPrediction] = useState(null)
@@ -274,8 +319,30 @@ export default function App() {
   }
 
   async function loadPlan(nextSource = source, nextDestination = destination, options = {}) {
-    const { preserveSelection = false } = options
+    const { preserveSelection = false, force = false } = options
+    const planSignature = buildPlanSignature({
+      dataset: DEFAULT_DATASET,
+      source: nextSource,
+      destination: nextDestination,
+      alpha,
+      providerBaseline,
+      applicationType,
+      environmentType,
+      numericThreshold,
+    })
+
+    if (!force && inflightPlanSignatureRef.current === planSignature) {
+      return
+    }
+
+    if (!force && lastPlanSignatureRef.current === planSignature && routes.length && mapData) {
+      setCommittedSource(nextSource)
+      setCommittedDestination(nextDestination)
+      return
+    }
+
     const requestId = ++planRequestIdRef.current
+    inflightPlanSignatureRef.current = planSignature
     setPlanning(true)
     setError('')
     try {
@@ -284,28 +351,10 @@ export default function App() {
       }
       const controller = new AbortController()
       planAbortRef.current = controller
-      let data = null
-      let resolvedDataset = DEFAULT_DATASET
-      try {
-        data = await requestJson(
-          `${API_BASE}/planner/plan?dataset=${DEFAULT_DATASET}&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}`,
-          { signal: controller.signal },
-        )
-      } catch (loadError) {
-        const shouldFallbackToFull =
-          DEFAULT_DATASET !== 'full' &&
-          loadError instanceof Error &&
-          (loadError.detail === 'No route found between the selected points' || loadError.status === 400)
-        if (!shouldFallbackToFull) {
-          throw loadError
-        }
-
-        data = await requestJson(
-          `${API_BASE}/planner/plan?dataset=full&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}`,
-          { signal: controller.signal },
-        )
-        resolvedDataset = 'full'
-      }
+      const data = await requestJson(
+        `${API_BASE}/planner/plan?dataset=${DEFAULT_DATASET}&source=${encodeURIComponent(nextSource)}&destination=${encodeURIComponent(nextDestination)}&alpha=${alpha}&provider_baseline=${encodeURIComponent(providerBaseline)}&application_type=${encodeURIComponent(applicationType)}&environment_type=${encodeURIComponent(environmentType)}&min_signal_threshold_dbm=${numericThreshold}`,
+        { signal: controller.signal },
+      )
       if (requestId !== planRequestIdRef.current) return
 
       const nextRoutes = data.routes ?? []
@@ -323,8 +372,17 @@ export default function App() {
       setDestinationPoint(data.destination)
       setCommittedSource(nextSource)
       setCommittedDestination(nextDestination)
-      setActiveDataset(resolvedDataset)
       autoPlanReadyRef.current = true
+      lastPlanSignatureRef.current = planSignature
+      writePlanSnapshot({
+        signature: planSignature,
+        committedSource: nextSource,
+        committedDestination: nextDestination,
+        routes: nextRoutes,
+        mapData: data.map_context,
+        sourcePoint: data.source,
+        destinationPoint: data.destination,
+      })
       if (preferredRouteLabel) {
         handleRouteSelection(preferredRouteLabel, { manual: preserveSelection })
       }
@@ -333,6 +391,9 @@ export default function App() {
       if (requestId !== planRequestIdRef.current) return
       setError(loadError instanceof Error ? loadError.message : 'Failed to plan route.')
     } finally {
+      if (inflightPlanSignatureRef.current === planSignature) {
+        inflightPlanSignatureRef.current = ''
+      }
       if (requestId === planRequestIdRef.current) {
         setPlanning(false)
       }
@@ -465,7 +526,7 @@ export default function App() {
     setDemoRecommendedRouteLabel(null)
     setCommittedSource(source)
     setCommittedDestination(destination)
-    loadPlan(source, destination, { preserveSelection: false })
+    loadPlan(source, destination, { preserveSelection: false, force: true })
   }
 
   function handleSimulationPlayPause() {
@@ -535,8 +596,6 @@ export default function App() {
           providerBaseline={providerBaseline}
           providerOptions={providerOptions}
           onProviderChange={setProviderBaseline}
-          environmentType={environmentType}
-          onEnvironmentTypeChange={setEnvironmentType}
           applicationType={applicationType}
           onApplicationTypeChange={setApplicationType}
           minSignalThreshold={minSignalThreshold}
@@ -601,8 +660,6 @@ export default function App() {
           demoStartRouteLabel={demoStartRoute?.route_label ?? null}
         />
       ) : null}
-
-      {activePage === 'about' ? <About summary={summary} overview={overview} loading={loading} error={error} /> : null}
     </main>
   )
 }

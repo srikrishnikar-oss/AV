@@ -136,8 +136,6 @@ export default function Planner({
   providerBaseline,
   providerOptions,
   onProviderChange,
-  environmentType,
-  onEnvironmentTypeChange,
   applicationType,
   onApplicationTypeChange,
   minSignalThreshold,
@@ -188,9 +186,6 @@ export default function Planner({
               <span>{error}</span>
             </div>
           ) : null}
-          <p className="about-note">
-            Demo presets that work well: Cubbon Park, Indiranagar Metro Station, MG Road, Koramangala, Whitefield, Banashankari, Electronic City.
-          </p>
         </div>
 
         <div className="panel">
@@ -241,24 +236,6 @@ export default function Planner({
               {['Navigation', 'Telematics', 'Ride-hail', 'OTA Update'].map((option) => (
                 <option key={option} value={option}>
                   {option}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>signal context</label>
-            <select value={environmentType} onChange={(event) => onEnvironmentTypeChange(event.target.value)}>
-              {[
-                ['normal', 'Normal'],
-                ['rain', 'Rain'],
-                ['heavy_rain', 'Heavy rain'],
-                ['urban_dense', 'Urban dense'],
-                ['rural_sparse', 'Rural sparse'],
-                ['tunnel', 'Tunnel'],
-                ['underpass', 'Underpass'],
-              ].map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
                 </option>
               ))}
             </select>
