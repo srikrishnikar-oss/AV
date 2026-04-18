@@ -10,6 +10,130 @@ from backend.core.geocoding import geocode_place
 router = APIRouter(prefix="/planner", tags=["planner"])
 
 
+_REROUTE_SEVERITY_ORDER = {
+    "clear": 0,
+    "watch": 1,
+    "warning": 2,
+    "critical": 3,
+}
+
+
+def _attach_pnr_node_indices(routes: list[dict[str, object]]) -> list[dict[str, object]]:
+    for route in routes:
+        pnr = route.get("point_of_no_return")
+        path_nodes = route.get("path_nodes") or []
+        if not pnr or not path_nodes:
+            route["pnr_node_index"] = None
+            continue
+
+        pnr_node_id = pnr.get("node_id")
+        try:
+            route["pnr_node_index"] = path_nodes.index(pnr_node_id)
+        except ValueError:
+            route["pnr_node_index"] = None
+    return routes
+
+
+def _reroute_candidate_key(prediction: dict[str, object]) -> tuple[float, ...]:
+    next_risk = prediction.get("next_risk", {})
+    severity = str(next_risk.get("severity", "clear"))
+    time_to_risk_min = next_risk.get("time_to_risk_min")
+    predicted_risk_score = next_risk.get("predicted_risk_score")
+    predicted_min_signal = next_risk.get("predicted_min_signal")
+    return (
+        float(_REROUTE_SEVERITY_ORDER.get(severity, 99)),
+        -float(time_to_risk_min if time_to_risk_min is not None else -1.0),
+        float(predicted_risk_score if predicted_risk_score is not None else 1.0),
+        -float(predicted_min_signal if predicted_min_signal is not None else 0.0),
+    )
+
+
+def _severity_rank(next_risk: dict[str, object]) -> int:
+    return int(_REROUTE_SEVERITY_ORDER.get(str(next_risk.get("severity", "clear")), 99))
+
+
+def _time_to_risk_minutes(next_risk: dict[str, object]) -> float:
+    value = next_risk.get("time_to_risk_min")
+    if value is None:
+        return 999.0
+    return float(value)
+
+
+def _is_materially_safer(primary_prediction: dict[str, object], candidate_prediction: dict[str, object]) -> bool:
+    primary_next_risk = primary_prediction.get("next_risk", {})
+    candidate_next_risk = candidate_prediction.get("next_risk", {})
+    fallback_event_type = str(((primary_prediction.get("fallback_status") or {}).get("last_event") or {}).get("event_type", ""))
+
+    primary_severity = _severity_rank(primary_next_risk)
+    candidate_severity = _severity_rank(candidate_next_risk)
+    if candidate_severity < primary_severity:
+        return True
+    if candidate_severity > primary_severity:
+        return False
+
+    primary_time = _time_to_risk_minutes(primary_next_risk)
+    candidate_time = _time_to_risk_minutes(candidate_next_risk)
+    if candidate_time >= primary_time + 0.75:
+        return True
+
+    primary_signal = float(primary_next_risk.get("predicted_min_signal") or 0.0)
+    candidate_signal = float(candidate_next_risk.get("predicted_min_signal") or 0.0)
+    primary_score = float(primary_next_risk.get("predicted_risk_score") or 1.0)
+    candidate_score = float(candidate_next_risk.get("predicted_risk_score") or 1.0)
+    if fallback_event_type == "PNR_APPROACHING":
+        return (candidate_time > primary_time) or (candidate_severity <= primary_severity)
+    return (candidate_signal >= primary_signal + 6.0) or (candidate_score <= primary_score - 0.08)
+
+
+def _choose_reroute(
+    store,
+    routes: list[dict[str, object]],
+    primary_route: dict[str, object],
+    primary_prediction: dict[str, object],
+    *,
+    speed_kmph: float,
+    progress_ratio: float,
+    destination_assessment: dict[str, object] | None,
+) -> tuple[bool, str | None, str | None]:
+    primary_next_risk = primary_prediction.get("next_risk", {})
+    primary_severity = str(primary_next_risk.get("severity", "clear"))
+    fallback_status = primary_prediction.get("fallback_status", {})
+    fallback_event_type = str((fallback_status.get("last_event") or {}).get("event_type", ""))
+    should_consider_reroute = primary_severity in {"warning", "critical"} or fallback_event_type == "PNR_APPROACHING"
+    if not should_consider_reroute:
+        return False, None, None
+
+    candidates: list[tuple[tuple[float, ...], dict[str, object], dict[str, object]]] = []
+    for route in routes:
+        if route["route_label"] == primary_route["route_label"]:
+            continue
+        candidate_prediction = store.predict_signal_risk(
+            route=route,
+            speed_kmph=speed_kmph,
+            progress_ratio=progress_ratio,
+            destination_assessment=destination_assessment,
+        )
+        candidates.append((_reroute_candidate_key(candidate_prediction), route, candidate_prediction))
+
+    if not candidates:
+        return False, None, None
+
+    best_candidate_key, best_candidate, best_candidate_prediction = min(candidates, key=lambda item: item[0])
+    if not _is_materially_safer(primary_prediction, best_candidate_prediction):
+        return False, None, None
+
+    next_risk_message = str(primary_next_risk.get("message", "Upcoming signal degradation detected."))
+    if fallback_event_type == "PNR_APPROACHING":
+        next_risk_message = "Point of no return is near."
+    candidate_next_risk = best_candidate_prediction.get("next_risk", {})
+    candidate_severity = str(candidate_next_risk.get("severity", "clear")).replace("_", " ")
+    reroute_reason = (
+        f"{next_risk_message} Switching to the {best_candidate['route_label']} route "
+        f"to maintain connectivity. Alternate route outlook: {candidate_severity}."
+    )
+    return True, str(best_candidate["route_label"]), reroute_reason
+
+
 @router.get("/overview")
 def planner_overview(dataset: str = Query(default="mvp", pattern="^(mvp|full)$")) -> dict[str, object]:
     store = get_store(dataset)
@@ -75,6 +199,8 @@ def plan(
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
+    plan_result["routes"] = _attach_pnr_node_indices(plan_result["routes"])
+
     return {
         "dataset": dataset,
         "source": source_point,
@@ -123,6 +249,8 @@ def predict_risk(
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
+    plan_result["routes"] = _attach_pnr_node_indices(plan_result["routes"])
+
     if not plan_result["routes"]:
         raise HTTPException(status_code=400, detail="No route options available for prediction")
 
@@ -136,6 +264,15 @@ def predict_risk(
         progress_ratio=progress_ratio,
         destination_assessment=plan_result["destination_assessment"],
     )
+    should_reroute, recommended_route_label, reroute_reason = _choose_reroute(
+        store,
+        plan_result["routes"],
+        primary_route,
+        prediction,
+        speed_kmph=speed_kmph,
+        progress_ratio=progress_ratio,
+        destination_assessment=plan_result["destination_assessment"],
+    )
 
     return {
         "dataset": dataset,
@@ -144,4 +281,7 @@ def predict_risk(
         "route_label": primary_route["route_label"],
         "prediction": prediction,
         "destination_assessment": plan_result["destination_assessment"],
+        "should_reroute": should_reroute,
+        "reroute_reason": reroute_reason,
+        "recommended_route_label": recommended_route_label,
     }

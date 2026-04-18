@@ -143,6 +143,7 @@ export default function Planner({
   minSignalThreshold,
   onThresholdChange,
   planning,
+  error,
   onSubmit,
   cityLabel,
   activeModeLabel,
@@ -181,6 +182,15 @@ export default function Planner({
           <button type="button" className="primary-action" onClick={onSubmit}>
             {planning ? 'planning...' : 'update route'}
           </button>
+          {error ? (
+            <div className="inline-alert inline-alert--critical">
+              <strong>planner error</strong>
+              <span>{error}</span>
+            </div>
+          ) : null}
+          <p className="about-note">
+            Demo presets that work well: Cubbon Park, Indiranagar Metro Station, MG Road, Koramangala, Whitefield, Banashankari, Electronic City.
+          </p>
         </div>
 
         <div className="panel">

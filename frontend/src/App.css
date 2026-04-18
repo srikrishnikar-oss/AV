@@ -263,6 +263,70 @@ select {
   font-size: 12px;
 }
 
+.reroute-banner {
+  margin-top: 14px;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  border: 0.5px solid rgba(88, 166, 255, 0.55);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(88, 166, 255, 0.18), rgba(13, 17, 23, 0.92));
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.08) inset;
+}
+
+.reroute-banner strong {
+  color: #8cc8ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.reroute-banner span {
+  color: #c9d1d9;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reroute-banner--pnr {
+  border-color: rgba(210, 153, 34, 0.65);
+  background: linear-gradient(135deg, rgba(210, 153, 34, 0.22), rgba(68, 46, 6, 0.94));
+  box-shadow: 0 0 0 1px rgba(210, 153, 34, 0.12) inset;
+}
+
+.reroute-banner--pnr strong {
+  color: #f3c969;
+}
+
+.playback-event {
+  margin-top: 12px;
+  padding: 11px 12px;
+  display: grid;
+  gap: 4px;
+  border: 0.5px solid #30363d;
+  border-radius: 8px;
+  background: rgba(13, 17, 23, 0.88);
+}
+
+.playback-event strong {
+  color: #c9d1d9;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.playback-event span {
+  color: #8b949e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.playback-event--demo strong,
+.playback-event--reroute strong {
+  color: #58a6ff;
+}
+
+.playback-event--replay strong {
+  color: #d29922;
+}
+
 .map-canvas-wrap {
   position: relative;
 }
@@ -681,6 +745,16 @@ select {
   margin-top: 16px;
 }
 
+.simulation-page {
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.simulation-page .panel--map {
+  position: sticky;
+  top: 16px;
+}
+
 .dashboard-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -781,6 +855,44 @@ th {
   gap: 14px;
 }
 
+.simulation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.simulation-toolbar__button {
+  width: auto;
+  min-width: 140px;
+  padding: 0 14px;
+}
+
+.simulation-toolbar__button--demo {
+  border-color: rgba(88, 166, 255, 0.65);
+  color: #8cc8ff;
+  background: rgba(88, 166, 255, 0.08);
+}
+
+.simulation-route-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #8b949e;
+  font-size: 12px;
+}
+
+.simulation-route-line strong {
+  color: #c9d1d9;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.simulation-route-line em {
+  color: #58a6ff;
+  font-style: normal;
+}
+
 .about-page__copy,
 .about-note,
 .about-list li {
@@ -827,12 +939,18 @@ th {
 @media (max-width: 1200px) {
   .planner-page,
   .about-grid,
-  .dashboard-cards {
+  .dashboard-cards,
+  .simulation-page {
     grid-template-columns: 1fr;
   }
 
   .planner-page {
     grid-template-columns: 1fr;
+  }
+
+  .simulation-page .panel--map {
+    position: relative;
+    top: auto;
   }
 
   .app-header {

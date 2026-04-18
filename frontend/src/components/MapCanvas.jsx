@@ -73,8 +73,9 @@ function FallbackMapView({
 
   const width = 1000
   const height = 720
-  const visibleRoutes = showAllRoutes ? routes : routes.filter((route) => route.route_label === selectedRouteLabel)
-  const selectedRoute = routes.find((route) => route.route_label === selectedRouteLabel) ?? visibleRoutes[0] ?? null
+  const selectedRoute = routes.find((route) => route.route_label === selectedRouteLabel) ?? routes[0] ?? null
+  const effectiveSelectedRouteLabel = selectedRoute?.route_label ?? selectedRouteLabel
+  const visibleRoutes = showAllRoutes ? routes : routes.filter((route) => route.route_label === effectiveSelectedRouteLabel)
   const heatSegments = sampleHeatSegments(mapData.segments)
   const heatScale = getHeatScale(mapData.segments)
 
@@ -151,7 +152,7 @@ function FallbackMapView({
               fill="none"
               stroke={style.color}
               strokeWidth={style.weight}
-              strokeOpacity={route.route_label === selectedRouteLabel || !selectedRouteLabel ? 0.95 : 0.6}
+              strokeOpacity={route.route_label === effectiveSelectedRouteLabel || !effectiveSelectedRouteLabel ? 0.95 : 0.6}
               strokeDasharray={style.dash ? style.dash.join(' ') : undefined}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -225,6 +226,8 @@ export default function MapCanvas({
   const mapRef = useRef(null)
   const containerRef = useRef(null)
   const [mapError, setMapError] = useState('')
+  const selectedRoute = routes.find((route) => route.route_label === selectedRouteLabel) ?? routes[0] ?? null
+  const effectiveSelectedRouteLabel = selectedRoute?.route_label ?? selectedRouteLabel
 
   useEffect(() => {
     let cancelled = false
@@ -305,13 +308,12 @@ export default function MapCanvas({
           )
         })
 
-        const visibleRoutes = showAllRoutes ? routes : routes.filter((route) => route.route_label === selectedRouteLabel)
-        const selectedRoute = routes.find((route) => route.route_label === selectedRouteLabel) ?? visibleRoutes[0] ?? null
+        const visibleRoutes = showAllRoutes ? routes : routes.filter((route) => route.route_label === effectiveSelectedRouteLabel)
 
         visibleRoutes.forEach((route, index) => {
           const routeStyle = getRouteStyle(route.route_label, index)
           const path = route.path_geometry.map((point) => ({ lat: point.lat, lng: point.lon }))
-          const isSelected = route.route_label === selectedRouteLabel || !selectedRouteLabel
+          const isSelected = route.route_label === effectiveSelectedRouteLabel || !effectiveSelectedRouteLabel
 
           overlays.push(
             new maps.Polyline({
@@ -341,7 +343,7 @@ export default function MapCanvas({
 
           path.forEach((point) => bounds.extend(point))
 
-          if (showPnr && route.route_label === selectedRouteLabel) {
+          if (showPnr && route.route_label === effectiveSelectedRouteLabel) {
             const pnr = route.point_of_no_return
             if (pnr) {
               bounds.extend({ lat: pnr.lat, lng: pnr.lon })
@@ -572,14 +574,14 @@ export default function MapCanvas({
       cancelled = true
       overlays.forEach((overlay) => overlay.setMap(null))
     }
-  }, [mapData, routes, selectedRouteLabel, sourcePoint, destinationPoint, providerBaseline, showAllRoutes, showPnr, compact, simulationPoint, fallbackStatus])
+  }, [mapData, routes, effectiveSelectedRouteLabel, sourcePoint, destinationPoint, providerBaseline, showAllRoutes, showPnr, compact, simulationPoint, fallbackStatus])
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
       <FallbackMapView
         mapData={mapData}
         routes={routes}
-        selectedRouteLabel={selectedRouteLabel}
+        selectedRouteLabel={effectiveSelectedRouteLabel}
         sourcePoint={sourcePoint}
         destinationPoint={destinationPoint}
         showAllRoutes={showAllRoutes}
@@ -595,7 +597,7 @@ export default function MapCanvas({
         <FallbackMapView
           mapData={mapData}
           routes={routes}
-          selectedRouteLabel={selectedRouteLabel}
+          selectedRouteLabel={effectiveSelectedRouteLabel}
           sourcePoint={sourcePoint}
           destinationPoint={destinationPoint}
           showAllRoutes={showAllRoutes}
